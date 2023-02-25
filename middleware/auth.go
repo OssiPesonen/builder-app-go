@@ -1,6 +1,7 @@
-package services
+package middleware
 
 import (
+	"builder-app/services"
 	"log"
 	"net/http"
 	"os"
@@ -31,8 +32,8 @@ func AuthenticateWebhook() gin.HandlerFunc {
 // Middleware to authenticate Github commit event
 func AuthenticateGithubWebhook() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		secret := os.Getenv("BUILDER_GITHUB_SECRET")
-		_, err := VerifyGithubReqSignature([]byte(secret), c.Request)
+		secret := []byte(os.Getenv("BUILDER_GITHUB_SECRET"))
+		_, err := services.VerifyGithubReqSignature(secret, c.Request)
 
 		if err == nil {
 			c.Next()

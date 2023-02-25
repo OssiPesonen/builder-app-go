@@ -7,5 +7,5 @@ import (
 )
 
 func WebhookAction(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"Hello": "World"})
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }

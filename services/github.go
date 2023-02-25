@@ -1,191 +1,104 @@
-// Copyright 2016 The go-github AUTHORS. All rights reserved.
-// https://github.com/google/go-github/blob/master/github/messages.go
-
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
-
-// This file provides functions for validating payloads from GitHub Webhooks.
-// GitHub API docs: https://developer.github.com/webhooks/securing/#validating-payloads-from-github
-
 package services
 
 import (
 	"crypto/hmac"
-	"crypto/sha1"
 	"crypto/sha256"
-	"crypto/sha512"
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"hash"
-	"io"
-	"mime"
+	"io/ioutil"
 	"net/http"
-	"net/url"
 	"strings"
 )
 
-const (
-	// sha1Prefix is the prefix used by GitHub before the HMAC hexdigest.
-	sha1Prefix = "sha1"
-	// sha256Prefix and sha512Prefix are provided for future compatibility.
-	sha256Prefix = "sha256"
-	sha512Prefix = "sha512"
-	// SHA1SignatureHeader is the GitHub header key used to pass the HMAC-SHA1 hexdigest.
-	SHA1SignatureHeader = "X-Hub-Signature"
-	// SHA256SignatureHeader is the GitHub header key used to pass the HMAC-SHA256 hexdigest.
-	SHA256SignatureHeader = "X-Hub-Signature-256"
-	// EventTypeHeader is the GitHub header key used to pass the event type.
-	EventTypeHeader = "X-Github-Event"
-	// DeliveryIDHeader is the GitHub header key used to pass the unique ID for the webhook event.
-	DeliveryIDHeader = "X-Github-Delivery"
-)
+// Hook is an inbound github webhook
+type Hook struct {
 
-// genMAC generates the HMAC signature for a message provided the secret key
-// and hashFunc.
-func genMAC(message, key []byte, hashFunc func() hash.Hash) []byte {
-	mac := hmac.New(hashFunc, key)
-	mac.Write(message)
-	return mac.Sum(nil)
+	// Id specifies the Id of a github webhook request.
+	// Id is extracted from the inbound request's `X-Github-Delivery` header.
+	Id string
+
+	// Event specifies the event name of a github webhook request.
+	// Event is extracted from the inbound request's `X-GitHub-Event` header.
+	// See: https://developer.github.com/webhooks/#events
+	Event string
+
+	// Signature specifies the signature of a github webhook request.
+	// Signature is extracted from the inbound request's `X-Hub-Signature` header.
+	Signature string
+
+	// Payload contains the raw contents of the webhook request.
+	// Payload is extracted from the JSON-formatted body of the inbound request.
+	Payload []byte
 }
 
-// checkMAC reports whether messageMAC is a valid HMAC tag for message.
-func checkMAC(message, messageMAC, key []byte, hashFunc func() hash.Hash) bool {
-	expectedMAC := genMAC(message, key, hashFunc)
-	return hmac.Equal(messageMAC, expectedMAC)
+const signaturePrefix = "sha256="
+const signatureLength = 71 // len(SignaturePrefix) + len(hex(sha256=))
+
+func signBody(secret, body []byte) []byte {
+	computed := hmac.New(sha256.New, secret)
+	computed.Write(body)
+	return computed.Sum(nil)
 }
 
-// messageMAC returns the hex-decoded HMAC tag from the signature and its
-// corresponding hash function.
-func messageMAC(signature string) ([]byte, func() hash.Hash, error) {
-	if signature == "" {
-		return nil, nil, errors.New("missing signature")
-	}
-	sigParts := strings.SplitN(signature, "=", 2)
-	if len(sigParts) != 2 {
-		return nil, nil, fmt.Errorf("error parsing signature %q", signature)
-	}
-
-	var hashFunc func() hash.Hash
-	switch sigParts[0] {
-	case sha1Prefix:
-		hashFunc = sha1.New
-	case sha256Prefix:
-		hashFunc = sha256.New
-	case sha512Prefix:
-		hashFunc = sha512.New
-	default:
-		return nil, nil, fmt.Errorf("unknown hash type prefix: %q", sigParts[0])
-	}
-
-	buf, err := hex.DecodeString(sigParts[1])
-	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding signature %q: %v", signature, err)
-	}
-	return buf, hashFunc, nil
-}
-
-// ValidatePayload validates an incoming GitHub Webhook event request body
-// and returns the (JSON) payload.
-// The Content-Type header of the payload can be "application/json" or "application/x-www-form-urlencoded".
-// If the Content-Type is neither then an error is returned.
-// secretToken is the GitHub Webhook secret token.
-// If your webhook does not contain a secret token, you can pass nil or an empty slice.
-// This is intended for local development purposes only and all webhooks should ideally set up a secret token.
+// SignedBy checks that the provided secret matches the hook Signature
 //
-// Example usage:
-//
-//	func (s *GitHubEventMonitor) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-//	  // read signature from request
-//	  signature := ""
-//	  payload, err := github.ValidatePayloadFromBody(r.Header.Get("Content-Type"), r.Body, signature, s.webhookSecretKey)
-//	  if err != nil { ... }
-//	  // Process payload...
-//	}
-func ValidatePayloadFromBody(contentType string, readable io.Reader, signature string, secretToken []byte) (payload []byte, err error) {
-	var body []byte // Raw body that GitHub uses to calculate the signature.
-
-	switch contentType {
-	case "application/json":
-		var err error
-		if body, err = io.ReadAll(readable); err != nil {
-			return nil, err
-		}
-
-		// If the content type is application/json,
-		// the JSON payload is just the original body.
-		payload = body
-
-	case "application/x-www-form-urlencoded":
-		// payloadFormParam is the name of the form parameter that the JSON payload
-		// will be in if a webhook has its content type set to application/x-www-form-urlencoded.
-		const payloadFormParam = "payload"
-
-		var err error
-		if body, err = io.ReadAll(readable); err != nil {
-			return nil, err
-		}
-
-		// If the content type is application/x-www-form-urlencoded,
-		// the JSON payload will be under the "payload" form param.
-		form, err := url.ParseQuery(string(body))
-		if err != nil {
-			return nil, err
-		}
-		payload = []byte(form.Get(payloadFormParam))
-
-	default:
-		return nil, fmt.Errorf("webhook request has unsupported Content-Type %q", contentType)
+// Implements validation described in github's documentation:
+// https://developer.github.com/webhooks/securing/
+func (h *Hook) SignedBy(secret []byte) bool {
+	if len(h.Signature) != signatureLength || !strings.HasPrefix(h.Signature, signaturePrefix) {
+		fmt.Println("Invalid signature length or prefix")
+		return false
 	}
 
-	// Only validate the signature if a secret token exists. This is intended for
-	// local development only and all webhooks should ideally set up a secret token.
-	if len(secretToken) > 0 {
-		if err := ValidateSignature(signature, body, secretToken); err != nil {
-			return nil, err
-		}
-	}
+	// Actual signature hash
+	hash := h.Signature[7:]
 
-	return payload, nil
-}
-
-// ValidatePayload validates an incoming GitHub Webhook event request
-// and returns the (JSON) payload.
-// The Content-Type header of the payload can be "application/json" or "application/x-www-form-urlencoded".
-// If the Content-Type is neither then an error is returned.
-// secretToken is the GitHub Webhook secret token.
-// If your webhook does not contain a secret token, you can pass nil or an empty slice.
-// This is intended for local development purposes only and all webhooks should ideally set up a secret token.
-func ValidatePayload(r *http.Request, secretToken []byte) (payload []byte, err error) {
-	signature := r.Header.Get(SHA256SignatureHeader)
-	if signature == "" {
-		signature = r.Header.Get(SHA1SignatureHeader)
-	}
-
-	contentType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	// Convert signature to an array of bytes
+	sig, err := hex.DecodeString(hash)
 
 	if err != nil {
-		return nil, err
+		fmt.Println("Unable to convert hash to bytes")
+		return false
 	}
 
-	return ValidatePayloadFromBody(contentType, r.Body, signature, secretToken)
+	bodySig := signBody(secret, h.Payload)
+
+	return hmac.Equal(sig, bodySig)
 }
 
-// ValidateSignature validates the signature for the given payload.
-// signature is the GitHub hash signature delivered in the X-Hub-Signature header.
-// payload is the JSON payload sent by GitHub Webhooks.
-// secretToken is the GitHub Webhook secret token.
-//
-// GitHub API docs: https://developer.github.com/webhooks/securing/#validating-payloads-from-github
-func ValidateSignature(signature string, payload, secretToken []byte) error {
-	messageMAC, hashFunc, err := messageMAC(signature)
+// New reads a Hook from an incoming HTTP Request.
+func New(req *http.Request) (hook *Hook, err error) {
+	hook = new(Hook)
 
-	if err != nil {
-		return err
+	// Validate request
+	if !strings.EqualFold(req.Method, "POST") {
+		return nil, errors.New("Unknown method!")
 	}
 
-	if !checkMAC(payload, messageMAC, secretToken, hashFunc) {
-		return errors.New("payload signature check failed")
+	if hook.Signature = req.Header.Get("x-hub-signature-256"); len(hook.Signature) == 0 {
+		return nil, errors.New("No signature!")
 	}
-	return nil
+
+	if hook.Event = req.Header.Get("x-github-event"); len(hook.Event) == 0 {
+		return nil, errors.New("No event!")
+	}
+
+	if hook.Id = req.Header.Get("x-github-delivery"); len(hook.Id) == 0 {
+		return nil, errors.New("No event Id!")
+	}
+
+	hook.Payload, err = ioutil.ReadAll(req.Body)
+	return
+}
+
+// Parse reads and verifies the hook in an inbound request.
+func VerifyGithubReqSignature(secret []byte, req *http.Request) (hook *Hook, err error) {
+	hook, err = New(req)
+
+	if err == nil && !hook.SignedBy(secret) {
+		err = errors.New("Invalid signature")
+	}
+
+	return
 }

@@ -1,4 +1,6 @@
-# Builder App with a REST API for webhooks
+# Introduction
+
+**A tool with a REST API for your server to hook into to trigger builds for your application**. 
 
 Some developers don't want to, or can, use cloud providers to host and deploy our applications. Instead we have to use on-premise
 virtual machines where we might have root access, but these servers don't usually have any fancy deployment tools. 

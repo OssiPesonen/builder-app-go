@@ -1,4 +1,5 @@
-module builder-app
+module github.com/OssiPesonen/builder-app-go
+
 
 go 1.19
 

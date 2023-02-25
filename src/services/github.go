@@ -11,9 +11,7 @@ import (
 	"strings"
 )
 
-// Hook is an inbound github webhook
 type Hook struct {
-
 	// Id specifies the Id of a github webhook request.
 	// Id is extracted from the inbound request's `X-Github-Delivery` header.
 	Id string

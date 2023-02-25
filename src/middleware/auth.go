@@ -1,10 +1,11 @@
 package middleware
 
 import (
-	"builder-app/services"
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/OssiPesonen/builder-app-go/src/services"
 
 	"github.com/gin-gonic/gin"
 )

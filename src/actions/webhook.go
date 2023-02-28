@@ -25,7 +25,7 @@ func BuildAction(c *gin.Context) {
 		return
 	}
 
-	go services.RunScript(filePath)
+	go services.RunScript(filePath, lockFile)
 	c.JSON(http.StatusAccepted, gin.H{"status": "ok"})
 	return
 }

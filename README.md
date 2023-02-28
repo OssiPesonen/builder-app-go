@@ -56,11 +56,29 @@ An example bash script for a node.js front-end project:
 ```sh
 #!/bin/bash
 
-cd /var/www/html;
-git pull;
-rm -rm node_modules;
-npm install;
-npm run build && npm run generate && pm2 restart <ProcessName>;
-```
+cd /var/www
 
-A more advanced case would be to create an empty directory to which you clone the entire repo, install packages, copy a base environment variable file to, then build it, move that build over to the actual host folder and restart your process manager. This way you won't hit any conflicts with `git pull`.
+# Clone repo
+git clone <repo-address>
+
+# Copy environment variables
+cp .env temp/
+
+# Install packages
+cd temp && yarn install
+
+# Build
+yarn run build
+
+# Delete process
+pm2 delete app
+
+# Remove earlier installation
+rm -rf /var/www/public_html
+
+# Rename temp to public
+mv /var/www/temp /var/www/public_html
+
+# Start the process in the new folder
+cd /var/www/public_html && pm2 start "yarn run start" --name app
+```

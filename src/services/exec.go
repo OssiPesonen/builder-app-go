@@ -30,4 +30,10 @@ func RunScript(filePath string) {
 	if err != nil {
 		fmt.Printf(err.Error())
 	}
+
+	// And when you need to wait for the command to finish:
+	if err := cmd.Wait(); err == nil {
+		fmt.Printf("Command finished successfully")
+	}
+
 }

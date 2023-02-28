@@ -11,10 +11,21 @@ import (
 func BuildAction(c *gin.Context) {
 	filePath := os.Getenv("BUILDER_EXEC_PATH")
 
+	// Check executable
 	if filePath == "" {
-		c.JSON(http.StatusOK, gin.H{"status": "error", "error": "Build command missing. Nothing to execute."})
-	} else {
-		services.RunScript(filePath)
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+		c.JSON(http.StatusNotImplemented, gin.H{"status": "error", "error": "Build command missing. Nothing to execute."})
+		return
 	}
+
+	lockFile := os.TempDir() + "/builderLockFile"
+
+	// Check lockfile
+	if _, err := os.Stat(lockFile); err == nil {
+		c.JSON(http.StatusForbidden, gin.H{"status": "error", "error": "Lockfile found. Build in progress. Please wait a moment."})
+		return
+	}
+
+	go services.RunScript(filePath, lockFile)
+	c.JSON(http.StatusAccepted, gin.H{"status": "ok"})
+	return
 }

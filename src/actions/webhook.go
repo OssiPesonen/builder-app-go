@@ -8,7 +8,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func WebhookAction(c *gin.Context) {
-	services.RunScript(os.Getenv("BUILDER_EXEC_PATH"))
-	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+func BuildAction(c *gin.Context) {
+	filePath := os.Getenv("BUILDER_EXEC_PATH")
+
+	if filePath == "" {
+		c.JSON(http.StatusOK, gin.H{"status": "error", "error": "Build command missing. Nothing to execute."})
+	} else {
+		services.RunScript(filePath)
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	}
 }

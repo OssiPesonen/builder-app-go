@@ -35,6 +35,5 @@ func loadRoutes(r *gin.Engine) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	r.POST("/webhook", services.AuthenticateWebhook(), actions.WebhookAction)
-	r.POST("/github_webhook", services.AuthenticateGithubWebhook(), actions.GithubAction)
+	r.POST("/build", services.AuthenticateRequest(), actions.BuildAction)
 }

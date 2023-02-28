@@ -31,6 +31,7 @@ type Hook struct {
 }
 
 const signaturePrefix = "sha256="
+
 const signatureLength = 71 // len(SignaturePrefix) + len(hex(sha256=))
 
 func signBody(secret, body []byte) []byte {

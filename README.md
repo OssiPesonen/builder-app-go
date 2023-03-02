@@ -64,3 +64,7 @@ npm run build && npm run generate && pm2 restart <ProcessName>;
 ```
 
 A more advanced case would be to create an empty directory to which you clone the entire repo, install packages, copy a base environment variable file to, then build it, move that build over to the actual host folder and restart your process manager. This way you won't hit any conflicts with `git pull`.
+
+# Troubleshooting
+
+### Cannot execute shell

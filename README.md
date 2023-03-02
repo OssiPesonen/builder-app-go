@@ -18,10 +18,10 @@ This application has only been tested on a Linux server. Error scenarios have no
 1. Clone this repo
 2. Run `go install ./src`
 3. Copy `.env.dist` as `.env` and set your variable values.
-4. Create a bash script to be executed somewhere on your server. Coppy it's full path and allow it to be executed with `chmod +x build.sh` for example.
+4. Create a bash script to be executed somewhere on your server. Copy it's full path and allow it to be executed with `chmod +x build.sh` for example.
 5. Build the app with `GOOS=linux GOARCH=amd64 go build -o bin/main src/main.go` and run it with something like pm2: `pm2 start bin/main --name builder-app`.
 6. Set up a reverse proxy in Apache / Nginx for localhost:8081 (default port in env)
-7. Do a POST call to your server. Don't forget to include the additional header, if you set one in the `BUILDER_REQ_HEADER`. For example `POST http://localhost:8082/build` (with headers).
+7. Do a POST call to your server. Don't forget to include the additional header, if you set one in the `BUILDER_WEBHOOK_SECRET`. For example `POST http://localhost:8080/build` (with headers).
 8. (optional) Set your Github repository webhook to point to the same server, to `/build` path, and set the same secret as the content (or change the server implementation if you want different secrets) 
 
 ## Example .env file

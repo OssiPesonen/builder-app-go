@@ -18,9 +18,11 @@ This application has only been tested on a Linux server. Error scenarios have no
 1. Clone this repo
 2. Run `go install ./src`
 3. Copy `.env.dist` as `.env` and set your variable values.
-4. Build the app and move it to your server to host it. You might need to add a `systemd` service pointing at your binary and then start it, after which you might need to set up a reverse proxy server with Nginx or Apache.
-5. Do a POST call to your server. Don't forget to include the additional header, if you set one in the `BUILDER_REQ_HEADER`. For example `POST http://localhost:8082/build` (with headers).
-6. (optional) Set your Github repository webhook to point to the same server, to `/build` path, and set the same secret as the content (or change the server implementation if you want different secrets) 
+4. Create a bash script to be executed somewhere on your server. Coppy it's full path and allow it to be executed with `chmod +x build.sh` for example.
+5. Build the app with `GOOS=linux GOARCH=amd64 go build -o bin/main src/main.go` and run it with something like pm2: `pm2 start bin/main --name builder-app`.
+6. Set up a reverse proxy in Apache / Nginx for localhost:8081 (default port in env)
+7. Do a POST call to your server. Don't forget to include the additional header, if you set one in the `BUILDER_REQ_HEADER`. For example `POST http://localhost:8082/build` (with headers).
+8. (optional) Set your Github repository webhook to point to the same server, to `/build` path, and set the same secret as the content (or change the server implementation if you want different secrets) 
 
 ## Example .env file
 
@@ -30,18 +32,17 @@ BUILDER_WEBHOOK_SECRET=barFoo123
 
 # Name for the header where secret is set in.
 # Only fill if you decide to put the key in the request headers.
-BUILDER_SECRET_HEADER_KEY=x-webhook-secret
-
-# Name for the property in the request body where secret is set in.
-# Only fill if you decide to put the key in the request body.
-BUILDER_SECRET_BODY_KEY=
+BUILDER_WEBHOOK_SECRET_HEADER=x-build-secret
 
 # Secret for Github webhook. This needs to be added to Github.
 # It is used to validate the request signature.
 BUILDER_GITHUB_SECRET=fooBar123
 
 # Port where HTTP server is exposed in
-BUILDER_PORT=8008
+BUILDER_PORT=8081
+
+# Path to executable shell script
+BUILDER_EXEC_PATH="/var/www/build.sh"
 ```
 
 ## Execution on the server
@@ -64,7 +65,3 @@ npm run build && npm run generate && pm2 restart <ProcessName>;
 ```
 
 A more advanced case would be to create an empty directory to which you clone the entire repo, install packages, copy a base environment variable file to, then build it, move that build over to the actual host folder and restart your process manager. This way you won't hit any conflicts with `git pull`.
-
-# Troubleshooting
-
-### Cannot execute shell

@@ -1,47 +1,56 @@
 package middleware
 
 import (
-	"log"
 	"net/http"
 	"os"
 
 	"github.com/OssiPesonen/builder-app-go/src/services"
-
 	"github.com/gin-gonic/gin"
 )
 
-// Middleware to authenticate a custom webhook request
-func AuthenticateWebhook() gin.HandlerFunc {
+// Middleware to authenticate requests
+func AuthenticateRequest() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		secret := os.Getenv("BUILDER_WEBHOOK_SECRET")
+		req := c.Request
 
-		if secret == "" {
-			c.Next()
+		if req.Header.Get("x-github-event") != "" {
+			AuthenticateGithubWebhook(c)
+		} else {
+			AuthenticateWebhook(c)
 		}
+	}
+}
 
+// Authenticate a custom build request
+func AuthenticateWebhook(c *gin.Context) {
+	secret := os.Getenv("BUILDER_WEBHOOK_SECRET")
+
+	if secret == "" {
+		// We can skip authentication if no secret is provided by environment
+		c.Next()
+	} else {
 		headerSecret := c.Request.Header.Get(os.Getenv("BUILDER_WEBHOOK_SECRET_HEADER"))
 
 		if headerSecret == secret {
 			c.Next()
 		} else {
 			c.Abort()
-			c.JSON(http.StatusForbidden, gin.H{"success": false, "message": "Invalid secret"})
+			// Secret does not match
+			c.JSON(http.StatusForbidden, gin.H{"description": "Authentication failed."})
 		}
 	}
 }
 
-// Middleware to authenticate Github commit event
-func AuthenticateGithubWebhook() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		secret := []byte(os.Getenv("BUILDER_GITHUB_SECRET"))
-		_, err := services.VerifyGithubReqSignature(secret, c.Request)
+// Authenticate Github event
+func AuthenticateGithubWebhook(c *gin.Context) {
+	secret := os.Getenv("BUILDER_GITHUB_SECRET")
+	_, err := services.VerifyGithubReqSignature([]byte(secret), c.Request)
 
-		if err == nil {
-			c.Next()
-		} else {
-			log.Printf(err.Error())
-			c.Abort()
-			c.JSON(http.StatusForbidden, gin.H{"success": false, "message": "Unable to validate signature"})
-		}
+	if err == nil {
+		c.Next()
+	} else {
+		c.Abort()
+		// Invalid secret
+		c.JSON(http.StatusForbidden, gin.H{"description": "Authentication failed."})
 	}
 }

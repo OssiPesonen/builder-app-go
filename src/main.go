@@ -3,11 +3,10 @@ package main
 import (
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 
 	"github.com/OssiPesonen/builder-app-go/src/actions"
-	"github.com/OssiPesonen/builder-app-go/src/services"
+	"github.com/OssiPesonen/builder-app-go/src/middleware"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -15,8 +14,7 @@ import (
 
 func main() {
 	loadEnv()
-	r := gin.Default()
-	loadRoutes(r)
+	r := setupRoutes()
 	r.Run(":" + os.Getenv("BUILDER_PORT"))
 }
 
@@ -30,10 +28,14 @@ func loadEnv() {
 	}
 }
 
-func loadRoutes(r *gin.Engine) {
+func setupRoutes() *gin.Engine {
+	r := gin.Default()
+
 	r.GET("/healthcheck", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+		c.Writer.WriteHeader(200)
 	})
 
-	r.POST("/build", services.AuthenticateRequest(), actions.BuildAction)
+	r.POST("/build", middleware.AuthenticateRequest(), actions.BuildAction)
+
+	return r
 }

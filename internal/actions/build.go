@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/OssiPesonen/builder-app-go/src/services"
+	"github.com/OssiPesonen/builder-app-go/internal/services"
 	"github.com/gin-gonic/gin"
 )
 
@@ -34,6 +34,4 @@ func BuildAction(c *gin.Context) {
 	go services.RunScript(filePath, lockFile)
 
 	c.Writer.WriteHeader(200)
-
-	return
 }

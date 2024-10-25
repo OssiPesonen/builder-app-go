@@ -6,7 +6,7 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/OssiPesonen/builder-app-go/src/utils"
+	"github.com/OssiPesonen/builder-app-go/internal/utils"
 )
 
 func RunScript(filePath, lockFile string) {

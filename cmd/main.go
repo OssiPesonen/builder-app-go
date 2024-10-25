@@ -5,8 +5,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/OssiPesonen/builder-app-go/src/actions"
-	"github.com/OssiPesonen/builder-app-go/src/middleware"
+	"github.com/OssiPesonen/builder-app-go/internal/actions"
+	"github.com/OssiPesonen/builder-app-go/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"

@@ -14,6 +14,10 @@ import (
 
 func main() {
 	loadEnv()
+	// Delete lockfile when initializing
+	lockFile := os.Getenv("BUILDER_LOCKFILE_PATH")
+	os.Remove(lockFile)
+
 	r := setupRoutes()
 	r.Run(":" + os.Getenv("BUILDER_PORT"))
 }

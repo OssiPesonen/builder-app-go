@@ -16,7 +16,7 @@ This application has only been tested on a Linux server. Error scenarios have no
 ## Getting started
 
 1. Clone this repo
-2. Run `go install ./src`
+2. Run `go install ./internal`
 3. Copy `.env.dist` as `.env` and set your variable values.
 4. Create a bash script to be executed somewhere on your server. Copy it's full path and allow it to be executed with `chmod +x build.sh` for example.
 5. Build the app with `GOOS=<operating-system> GOARCH=<architecture> go build -o bin/main cmd/main.go` and run it with something like pm2: `pm2 start bin/main --name builder-app`.
@@ -43,6 +43,9 @@ BUILDER_PORT=8081
 
 # Path to executable shell script
 BUILDER_EXEC_PATH="/var/www/build.sh"
+
+# Lockfile path if not using /tmp/builderLockFile
+BUILDER_LOCKFILE_PATH="/var/www/builder-lockfile"
 ```
 
 ## Execution on the server

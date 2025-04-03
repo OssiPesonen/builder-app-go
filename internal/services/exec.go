@@ -8,7 +8,7 @@ import (
 	"github.com/OssiPesonen/builder-app-go/internal/utils"
 )
 
-func RunScript(filePath, lockFile string) {
+func RunScript(filePath, lockFile string, messageBroadcaster *MessageBroadcaster) {
 	// Setup a log streamer for some improved logging
 	logger := log.New(os.Stdout, "[BUILDER] ", log.Ldate|log.Ltime)
 
@@ -46,4 +46,12 @@ func RunScript(filePath, lockFile string) {
 
 	// Finally remove lockfile
 	os.Remove(lockFile)
+	messageBroadcaster.Publish(
+		Message{
+			Title: "All done. Website should now be updated.",
+			Body:  ":tada: *All done!*\nWebsite should now be updated. Enjoy your fresh new content!",
+		},
+	)
+
+	messageBroadcaster.Close()
 }

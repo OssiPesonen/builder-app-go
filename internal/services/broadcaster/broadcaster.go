@@ -1,13 +1,15 @@
-package services
+package broadcaster
 
-import "sync"
+import (
+	"sync"
+)
 
 type Message struct {
 	Title string
 	Body  string
 }
 
-type MessageBroadcaster struct {
+type Broadcaster struct {
 	subscribers []chan Message
 	mu          sync.Mutex
 }
@@ -17,13 +19,13 @@ type Subscriber interface {
 	Run(wg *sync.WaitGroup)
 }
 
-func NewMessageBroadcaster() *MessageBroadcaster {
-	return &MessageBroadcaster{
+func NewBroadcaster() *Broadcaster {
+	return &Broadcaster{
 		subscribers: make([]chan Message, 0),
 	}
 }
 
-func (b *MessageBroadcaster) Subscribe() <-chan Message {
+func (b *Broadcaster) Subscribe() <-chan Message {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -32,7 +34,7 @@ func (b *MessageBroadcaster) Subscribe() <-chan Message {
 	return ch
 }
 
-func (b *MessageBroadcaster) Publish(msg Message) {
+func (b *Broadcaster) Publish(msg Message) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -41,7 +43,7 @@ func (b *MessageBroadcaster) Publish(msg Message) {
 	}
 }
 
-func (b *MessageBroadcaster) Close() {
+func (b *Broadcaster) Close() {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 

@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/OssiPesonen/builder-app-go/internal/services"
+	"github.com/OssiPesonen/builder-app-go/internal/services/broadcaster"
 )
 
 type BlockText struct {
@@ -26,10 +26,10 @@ type SlackMessage struct {
 
 type Slack struct {
 	URL     string
-	Channel <-chan services.Message
+	Channel <-chan broadcaster.Message
 }
 
-func NewSlack(url string, ch <-chan services.Message) services.Subscriber {
+func NewSlack(url string, ch <-chan broadcaster.Message) broadcaster.Subscriber {
 	return &Slack{
 		URL:     url,
 		Channel: ch,
